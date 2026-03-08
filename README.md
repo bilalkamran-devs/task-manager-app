@@ -169,6 +169,8 @@ lib/
     └── home.dart      # Home screen with task management
 ```
 
+## 📹 Demo Video
+https://github.com/user-attachments/assets/89d40eac-4e8f-4dc6-937d-46854063ccfa
 ---
 
 ## 👨‍💻 Author
