@@ -12,6 +12,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   List<Map<String, dynamic>> _tasks = [];
   final _taskController = TextEditingController();
+  String _filter = 'All';
 
   @override
   void initState() {
@@ -25,7 +26,6 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  // Load tasks from SharedPreferences
   Future<void> _loadTasks() async {
     final prefs = await SharedPreferences.getInstance();
     final String? tasksJson = prefs.getString('tasks');
@@ -36,50 +36,104 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // Save tasks to SharedPreferences
   Future<void> _saveTasks() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('tasks', jsonEncode(_tasks));
   }
 
-  // Add a new task
   void _addTask(String title) {
-    if (title.isEmpty) return;
+    if (title.trim().isEmpty) return;
     setState(() {
-      _tasks.add({'title': title, 'isCompleted': false});
+      _tasks.add({
+        'title': title.trim(),
+        'isCompleted': false,
+        'createdAt': DateTime.now().toIso8601String(),
+      });
     });
     _saveTasks();
     _taskController.clear();
   }
 
-  // Delete a task
   void _deleteTask(int index) {
+    final actualIndex = _getFilteredTasks()[index]['index'];
     setState(() {
-      _tasks.removeAt(index);
+      _tasks.removeAt(actualIndex);
     });
     _saveTasks();
   }
 
-  // Toggle task completion
   void _toggleTask(int index) {
+    final actualIndex = _getFilteredTasks()[index]['index'];
     setState(() {
-      _tasks[index]['isCompleted'] = !_tasks[index]['isCompleted'];
+      _tasks[actualIndex]['isCompleted'] = !_tasks[actualIndex]['isCompleted'];
     });
     _saveTasks();
   }
 
-  // Show add task dialog
+  void _deleteCompletedTasks() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear Completed'),
+        content: const Text(
+          'Are you sure you want to delete all completed tasks?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              setState(() {
+                _tasks.removeWhere((task) => task['isCompleted']);
+              });
+              _saveTasks();
+              Navigator.pop(context);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Map<String, dynamic>> _getFilteredTasks() {
+    List<Map<String, dynamic>> filtered = [];
+    for (int i = 0; i < _tasks.length; i++) {
+      if (_filter == 'All' ||
+          (_filter == 'Pending' && !_tasks[i]['isCompleted']) ||
+          (_filter == 'Completed' && _tasks[i]['isCompleted'])) {
+        filtered.add({..._tasks[i], 'index': i});
+      }
+    }
+    return filtered;
+  }
+
   void _showAddTaskDialog() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Add New Task'),
+        title: const Row(
+          children: [
+            Icon(Icons.add_task, color: Colors.blue),
+            SizedBox(width: 8),
+            Text('Add New Task'),
+          ],
+        ),
         content: TextField(
           controller: _taskController,
           autofocus: true,
           decoration: const InputDecoration(
             hintText: 'Enter task title',
             border: OutlineInputBorder(),
+            focusedBorder: OutlineInputBorder(
+              borderSide: BorderSide(color: Colors.blue, width: 2),
+            ),
           ),
           onSubmitted: (value) {
             _addTask(value);
@@ -113,15 +167,29 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final completedTasks = _tasks.where((t) => t['isCompleted']).length;
+    final filteredTasks = _getFilteredTasks();
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Task Manager'),
+        title: const Row(
+          children: [
+            Icon(Icons.task_alt, color: Colors.white),
+            SizedBox(width: 8),
+            Text('Task Manager', style: TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
         actions: [
+          // Clear completed button
           IconButton(
-            icon: const Icon(Icons.add),
+            icon: const Icon(Icons.delete_sweep),
+            onPressed: completedTasks > 0 ? _deleteCompletedTasks : null,
+            tooltip: 'Clear Completed',
+          ),
+          // Add task button
+          IconButton(
+            icon: const Icon(Icons.add_circle_outline),
             onPressed: _showAddTaskDialog,
             tooltip: 'Add Task',
           ),
@@ -133,53 +201,118 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
-            color: Colors.blue.shade50,
+            decoration: BoxDecoration(
+              color: Colors.blue,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.blue.shade200,
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildSummaryCard('Total', _tasks.length, Colors.blue),
-                _buildSummaryCard('Done', completedTasks, Colors.green),
+                _buildSummaryCard('Total', _tasks.length, Colors.white),
+                _buildSummaryCard('Done', completedTasks, Colors.greenAccent),
                 _buildSummaryCard(
                   'Pending',
                   _tasks.length - completedTasks,
-                  Colors.orange,
+                  Colors.orangeAccent,
                 ),
               ],
             ),
           ),
 
+          // Filter Tabs
+          Container(
+            color: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: ['All', 'Pending', 'Completed'].map((filter) {
+                final isSelected = _filter == filter;
+                return GestureDetector(
+                  onTap: () => setState(() => _filter = filter),
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isSelected ? Colors.blue : Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      filter,
+                      style: TextStyle(
+                        color: isSelected ? Colors.white : Colors.grey,
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+
           // Task List
           Expanded(
-            child: _tasks.isEmpty
-                ? const Center(
+            child: filteredTasks.isEmpty
+                ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.task_alt, size: 80, color: Colors.grey),
-                        SizedBox(height: 16),
-                        Text(
-                          'No tasks yet!',
-                          style: TextStyle(fontSize: 18, color: Colors.grey),
+                        Icon(
+                          _filter == 'Completed'
+                              ? Icons.check_circle_outline
+                              : Icons.task_alt,
+                          size: 80,
+                          color: Colors.grey.shade300,
                         ),
-                        SizedBox(height: 8),
+                        const SizedBox(height: 16),
+                        Text(
+                          _filter == 'All'
+                              ? 'No tasks yet!'
+                              : 'No $_filter tasks!',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Colors.grey.shade400,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
                         Text(
                           'Tap + to add a new task',
-                          style: TextStyle(fontSize: 14, color: Colors.grey),
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade400,
+                          ),
                         ),
                       ],
                     ),
                   )
                 : ListView.builder(
                     padding: const EdgeInsets.all(16),
-                    itemCount: _tasks.length,
+                    itemCount: filteredTasks.length,
                     itemBuilder: (context, index) {
-                      final task = _tasks[index];
+                      final task = filteredTasks[index];
                       return Card(
                         margin: const EdgeInsets.only(bottom: 8),
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         child: ListTile(
                           leading: Checkbox(
                             value: task['isCompleted'],
                             activeColor: Colors.blue,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
                             onChanged: (_) => _toggleTask(index),
                           ),
                           title: Text(
@@ -190,11 +323,17 @@ class _HomeScreenState extends State<HomeScreen> {
                                   : null,
                               color: task['isCompleted']
                                   ? Colors.grey
-                                  : Colors.black,
+                                  : Colors.black87,
+                              fontWeight: task['isCompleted']
+                                  ? FontWeight.normal
+                                  : FontWeight.w500,
                             ),
                           ),
                           trailing: IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red),
+                            icon: const Icon(
+                              Icons.delete_outline,
+                              color: Colors.red,
+                            ),
                             onPressed: () => _deleteTask(index),
                           ),
                         ),
@@ -204,11 +343,12 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: _showAddTaskDialog,
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
-        child: const Icon(Icons.add),
+        icon: const Icon(Icons.add),
+        label: const Text('Add Task'),
       ),
     );
   }
@@ -219,12 +359,15 @@ class _HomeScreenState extends State<HomeScreen> {
         Text(
           count.toString(),
           style: TextStyle(
-            fontSize: 24,
+            fontSize: 28,
             fontWeight: FontWeight.bold,
             color: color,
           ),
         ),
-        Text(label, style: TextStyle(fontSize: 12, color: color)),
+        Text(
+          label,
+          style: TextStyle(fontSize: 12, color: color.withOpacity(0.8)),
+        ),
       ],
     );
   }
