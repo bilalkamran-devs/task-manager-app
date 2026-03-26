@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'users_list.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -171,16 +172,26 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Row(
-          children: [
-            Icon(Icons.task_alt, color: Colors.white),
-            SizedBox(width: 8),
-            Text('Task Manager', style: TextStyle(fontWeight: FontWeight.bold)),
-          ],
+        title: const Text(
+          'Task Manager',
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
         actions: [
+          // Users button
+          IconButton(
+            icon: const Icon(Icons.people),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const UsersListScreen(),
+                ),
+              );
+            },
+            tooltip: 'Users',
+          ),
           // Clear completed button
           IconButton(
             icon: const Icon(Icons.delete_sweep),
