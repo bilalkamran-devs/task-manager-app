@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'users_list.dart';
+import '../services/auth_service.dart';
+import 'login.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -179,6 +181,80 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
         actions: [
+          // User profile button
+          IconButton(
+            icon: const Icon(Icons.account_circle),
+            onPressed: () async {
+              final userData = await AuthService.getUserData();
+              if (context.mounted) {
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Row(
+                      children: [
+                        Icon(Icons.account_circle, color: Colors.blue),
+                        SizedBox(width: 8),
+                        Text('My Profile'),
+                      ],
+                    ),
+                    content: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircleAvatar(
+                          radius: 40,
+                          backgroundColor: Colors.blue,
+                          child: Text(
+                            userData?['name']?[0].toUpperCase() ?? '?',
+                            style: const TextStyle(
+                              fontSize: 32,
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        _buildProfileRow(
+                          Icons.person,
+                          userData?['name'] ?? 'N/A',
+                        ),
+                        _buildProfileRow(
+                          Icons.email,
+                          userData?['email'] ?? 'N/A',
+                        ),
+                      ],
+                    ),
+                    actions: [
+                      ElevatedButton.icon(
+                        onPressed: () async {
+                          await AuthService.logout();
+                          if (context.mounted) {
+                            Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const LoginScreen(),
+                              ),
+                              (route) => false,
+                            );
+                          }
+                        },
+                        icon: const Icon(Icons.logout),
+                        label: const Text('Logout'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Close'),
+                      ),
+                    ],
+                  ),
+                );
+              }
+            },
+            tooltip: 'Profile',
+          ),
           // Users button
           IconButton(
             icon: const Icon(Icons.people),
@@ -380,6 +456,19 @@ class _HomeScreenState extends State<HomeScreen> {
           style: TextStyle(fontSize: 12, color: color.withOpacity(0.8)),
         ),
       ],
+    );
+  }
+
+  Widget _buildProfileRow(IconData icon, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.blue, size: 20),
+          const SizedBox(width: 8),
+          Expanded(child: Text(value, style: const TextStyle(fontSize: 14))),
+        ],
+      ),
     );
   }
 }
