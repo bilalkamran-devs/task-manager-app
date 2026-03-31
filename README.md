@@ -1,14 +1,18 @@
 # Task Manager App
 
-A Flutter-based task management application built progressively over 3 weeks as part of a Flutter learning journey.
+A Flutter-based task management application built progressively over 6 weeks as part of a Flutter Development Internship at DevelopersHub Corporation.
 
 ## 📱 Features
 
-- Login screen with form validation
+- Login and Signup with Firebase Authentication
 - Add, delete, and complete tasks
 - Filter tasks by All, Pending, and Completed
 - Data persistence using SharedPreferences
-- Clean and responsive UI
+- Fetch and display users from a REST API
+- User profile screen with posts
+- State management using Provider
+- Smooth UI animations
+- Cloud Firestore for user data storage
 
 ---
 
@@ -107,20 +111,123 @@ Future<void> _loadTasks() async {
 - Extended FloatingActionButton with label
 - Empty state messages for each filter
 
+---
+
+## 🗓️ Week 4: API Integration and Networking
+
+### What I Learned
+- Using the http package to make REST API calls
+- Parsing JSON responses into Dart objects
+- Handling network errors gracefully
+- Showing loading indicators while fetching data
+
+### What I Built
+- API service class for all network requests
+- Users list screen fetching data from JSONPlaceholder API
+- User profile screen showing name, email, phone, company and posts
+- Loading spinner while data is being fetched
+- Error screen with retry button for failed requests
+- Pull to refresh functionality
+
 ### Key Concepts
 ```dart
-// Filtering tasks
-List<Map<String, dynamic>> _getFilteredTasks() {
-  List<Map<String, dynamic>> filtered = [];
-  for (int i = 0; i < _tasks.length; i++) {
-    if (_filter == 'All' ||
-        (_filter == 'Pending' && !_tasks[i]['isCompleted']) ||
-        (_filter == 'Completed' && _tasks[i]['isCompleted'])) {
-      filtered.add({..._tasks[i], 'index': i});
+// Fetching data from API
+static Future<List<dynamic>> fetchUsers() async {
+  try {
+    final response = await http
+        .get(Uri.parse('$baseUrl/users'), headers: _headers)
+        .timeout(const Duration(seconds: 10));
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Failed to load users: ${response.statusCode}');
     }
+  } catch (e) {
+    throw Exception('Network error: $e');
   }
-  return filtered;
 }
+```
+
+---
+
+## 🗓️ Week 5: Firebase Authentication and Database
+
+### What I Learned
+- Setting up Firebase in a Flutter project
+- Implementing Email/Password Authentication
+- Storing and retrieving data from Cloud Firestore
+- Managing user sessions
+
+### What I Built
+- Firebase Authentication for login and signup
+- Signup screen with name, email, and password
+- User data stored in Cloud Firestore
+- Profile dialog showing name and email from Firestore
+- Logout functionality
+- Auto navigation based on auth state
+
+### Key Concepts
+```dart
+// Sign up and save to Firestore
+static Future<UserCredential> signUp({
+  required String name,
+  required String email,
+  required String password,
+}) async {
+  final UserCredential userCredential =
+      await _auth.createUserWithEmailAndPassword(
+    email: email,
+    password: password,
+  );
+  await _firestore.collection('users').doc(userCredential.user!.uid).set({
+    'name': name,
+    'email': email,
+    'createdAt': DateTime.now().toIso8601String(),
+  });
+  return userCredential;
+}
+```
+
+---
+
+## 🗓️ Week 6: State Management with Provider and Final Enhancements
+
+### What I Learned
+- Refactoring setState to Provider for cleaner state management
+- Using ChangeNotifier and Consumer widgets
+- Implementing explicit animations with AnimationController
+- Performance optimization with proper widget separation
+
+### What I Built
+- TaskProvider class using ChangeNotifier
+- Refactored HomeScreen to use Consumer<TaskProvider>
+- Header slides down from top on app open
+- FAB bounces in with elastic animation
+- Task cards slide in from right one by one
+- Smooth filter tab transitions with AnimatedContainer
+- Task completion animates with AnimatedDefaultTextStyle
+
+### Key Concepts
+```dart
+// Provider setup
+class TaskProvider extends ChangeNotifier {
+  List<Task> _tasks = [];
+
+  void addTask(String title) {
+    _tasks.add(Task(...));
+    notifyListeners();
+  }
+}
+
+// Consuming Provider in UI
+Consumer<TaskProvider>(
+  builder: (context, taskProvider, child) {
+    return ListView.builder(
+      itemCount: taskProvider.filteredTasks.length,
+      ...
+    );
+  },
+)
 ```
 
 ---
@@ -131,6 +238,7 @@ List<Map<String, dynamic>> _getFilteredTasks() {
 - Flutter SDK installed
 - Android Studio or VS Code with Flutter extension
 - Android device or emulator
+- Firebase account
 
 ### Steps to Run
 1. Clone the repository:
@@ -145,7 +253,8 @@ List<Map<String, dynamic>> _getFilteredTasks() {
 ```bash
    flutter pub get
 ```
-4. Run the app:
+4. Add your `google-services.json` file to `android/app/`
+5. Run the app:
 ```bash
    flutter run
 ```
@@ -157,20 +266,31 @@ List<Map<String, dynamic>> _getFilteredTasks() {
 | Package | Version | Purpose |
 |--------|---------|---------|
 | shared_preferences | ^2.2.2 | Local data persistence |
+| http | ^1.2.0 | REST API calls |
+| firebase_core | ^3.3.0 | Firebase initialization |
+| firebase_auth | ^5.1.0 | User authentication |
+| cloud_firestore | ^5.2.0 | Cloud database |
+| provider | ^6.1.2 | State management |
 
 ---
 
 ## 📁 Project Structure
 ```
 lib/
-├── main.dart          # App entry point and theme
-└── pages/
-    ├── login.dart     # Login screen with form validation
-    └── home.dart      # Home screen with task management
+├── main.dart                  # App entry point and Provider setup
+├── pages/
+│   ├── login.dart             # Firebase login screen
+│   ├── signup.dart            # Firebase signup screen
+│   ├── home.dart              # Home screen with Provider
+│   ├── users_list.dart        # API users list screen
+│   └── user_profile.dart      # API user profile screen
+├── providers/
+│   └── task_provider.dart     # Provider state management
+└── services/
+    ├── api_service.dart       # REST API service
+    └── auth_service.dart      # Firebase auth service
 ```
 
-## 📹 Demo Video
-https://github.com/user-attachments/assets/89d40eac-4e8f-4dc6-937d-46854063ccfa
 ---
 
 ## 👨‍💻 Author
